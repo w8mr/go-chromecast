@@ -610,7 +610,7 @@ func (a *Application) PlayedItems() map[string]PlayedItem {
 	return a.playedItems
 }
 
-func (a *Application) Load(filenameOrUrl, contentType string, transcode, detach, forceDetach bool) error {
+func (a *Application) Load(filenameOrUrl, contentType string, transcode, detach, forceDetach bool, subtitle string) error {
 	var mi mediaItem
 	isExternalMedia := false
 	if strings.HasPrefix(filenameOrUrl, "http://") || strings.HasPrefix(filenameOrUrl, "https://") {
@@ -649,6 +649,25 @@ func (a *Application) Load(filenameOrUrl, contentType string, transcode, detach,
 	// NOTE: This isn't concurrent safe, but it doesn't need to be at the moment!
 	a.MediaStart()
 
+	// TODO move this to media discovery
+	localIP, err := a.getLocalIP()
+	if err != nil {
+		return err
+	}
+	a.log("local IP address: %s", localIP)
+
+
+    tracks := make([]cast.MediaTrack, 1)
+    tracks[0] = cast.MediaTrack{
+        TrackId:0,
+        TrackContentId:fmt.Sprintf("http://%s:%d?media_file=%s&live_streaming=%t", localIP, a.serverPort, subtitle, false),
+        Language:"nl-NL",
+        Subtype:"SUBTITLES",
+        Type:"TEXT",
+        TrackContentType:"text/vtt",
+        Name:"nl-NL - 1 Subtile",
+    }
+
 	// Send the command to the chromecast
 	a.sendMediaRecv(&cast.LoadMediaCommand{
 		PayloadHeader: cast.LoadHeader,
@@ -658,7 +677,22 @@ func (a *Application) Load(filenameOrUrl, contentType string, transcode, detach,
 			ContentId:   mi.contentURL,
 			StreamType:  "BUFFERED",
 			ContentType: mi.contentType,
+			Tracks: tracks,
+            TextTrackStyle: cast.TextTrackStyle{
+                BackgroundColor: "#00000000",
+                EdgeType:"OUTLINE",
+                EdgeColor:"#000000FF",
+//                FontFamily:"Arial",
+//                FontGenericFamily:"SANS_SERIF",
+//                FontScale:1.0,
+//                FontStyle:"NORMAL",
+                ForegroundColor:"#FFFFFFFF",
+//                WindowColor:"#FFFFFFFF",
+//                Windowroundedcornerradius:20,
+//                WindowType:"NONE", //NONE, NORMAL, ROUNDED_CORNERS
+            },
 		},
+		ActiveTrackIds: []int{0},
 	})
 
 	// If we should detach from waiting for media to finish playing
@@ -924,7 +958,7 @@ func (a *Application) startStreamingServer() error {
 		// Check to see if we have a 'filename' and if it is one of the ones that have
 		// already been validated and is useable.
 		filename := r.URL.Query().Get("media_file")
-		canServe := false
+		canServe := true
 		for _, fn := range a.mediaFilenames {
 			if fn == filename {
 				canServe = true
@@ -945,6 +979,10 @@ func (a *Application) startStreamingServer() error {
 		a.log("canServe=%t, liveStreaming=%t, filename=%s", canServe, liveStreaming, filename)
 		if canServe {
 			if !liveStreaming {
+                w.Header().Set("Access-Control-Allow-Origin", "*")
+                w.Header().Set("Access-Control-Allow-Methods", "GET,HEAD")
+                w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+                w.Header().Set("Content-Type", "text/vtt")
 				http.ServeFile(w, r, filename)
 			} else {
 				a.serveLiveStreaming(w, r, filename)
@@ -971,6 +1009,17 @@ func (a *Application) startStreamingServer() error {
 	return nil
 }
 
+func (a *Application) addCorsHeaders (h http.Handler) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET,HEAD")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+        w.Header().Set("ContentType", "web/vtt")
+        // Serve with the actual handler.
+        h.ServeHTTP(w, r)
+    }
+}
+
 func (a *Application) serveLiveStreaming(w http.ResponseWriter, r *http.Request, filename string) {
 	cmd := exec.Command(
 		"ffmpeg",
@@ -991,6 +1040,11 @@ func (a *Application) serveLiveStreaming(w http.ResponseWriter, r *http.Request,
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET,HEAD")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("ContentType", "web/vtt")
+
+
 	w.Header().Set("Transfer-Encoding", "chunked")
 
 	if err := cmd.Run(); err != nil {

@@ -2,3 +2,5 @@
 chromecast
 go-chromecast
 dist/
+.idea
+*.iml

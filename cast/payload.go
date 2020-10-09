@@ -100,6 +100,7 @@ type LoadMediaCommand struct {
 	Autoplay    bool        `json:"autoplay"`
 	QueueData   QueueData   `json:"queueData"`
 	CustomData  interface{} `json:"customData"`
+	ActiveTrackIds []int    `json:"activeTrackIds"`
 }
 
 type QueueData struct {
@@ -107,11 +108,37 @@ type QueueData struct {
 }
 
 type MediaItem struct {
-	ContentId   string        `json:"contentId"`
-	ContentType string        `json:"contentType"`
-	StreamType  string        `json:"streamType"`
-	Duration    float32       `json:"duration"`
-	Metadata    MediaMetadata `json:"metadata"`
+	ContentId      string         `json:"contentId"`
+	ContentType    string         `json:"contentType"`
+	StreamType     string         `json:"streamType"`
+	Duration       float32        `json:"duration"`
+	Metadata       MediaMetadata  `json:"metadata"`
+	Tracks         []MediaTrack   `json:"tracks"`
+	TextTrackStyle TextTrackStyle `json:"textTrackStyle"`
+}
+
+type MediaTrack struct {
+    TrackId int             `json:"trackId"`
+    TrackContentId string   `json:"trackContentId"`
+    Language string         `json:"language"`
+    Subtype string          `json:"subtype"`
+    Type string             `json:"type"`
+    TrackContentType string `json:"trackContentType"`
+    Name string             `json:"name"`
+}
+
+type TextTrackStyle struct {
+    BackgroundColor string         `json:"backgroundColor,omitempty"`
+    EdgeType string                `json:"edgeType,omitempty"`
+    EdgeColor string               `json:"edgeColor,omitempty"`
+    FontFamily string              `json:"fontFamily,omitempty"`
+    FontGenericFamily string       `json:"fontGenericFamily,omitempty"`
+    FontScale float32              `json:"fontScale,omitempty"`
+    FontStyle string               `json:"fontStyle,omitempty"`
+    ForegroundColor string         `json:"foregroundColor,omitempty"`
+    WindowColor string             `json:"windowColor,omitempty"`
+    Windowroundedcornerradius int  `json:"windowroundedcornerradius,omitempty"`
+    WindowType string              `json:"windowType,omitempty"`
 }
 
 type MediaMetadata struct {

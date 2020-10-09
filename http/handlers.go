@@ -474,7 +474,7 @@ func (h *Handler) load(w http.ResponseWriter, r *http.Request) {
 
 	contentType := q.Get("content_type")
 
-	if err := app.Load(path, contentType, true, true, true); err != nil {
+	if err := app.Load(path, contentType, true, true, true, ""); err != nil {
 		h.log("unable to load media for device: %v", err)
 		httpError(w, fmt.Errorf("unable to load media for device: %w", err))
 		return
